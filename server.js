@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
@@ -7,8 +8,20 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Serve frontend statico dalla cartella 'public' (che conterrà l'export di Next.js)
-app.use(express.static(path.join(__dirname, 'public')));
+// Abilita compressione Gzip per ridurre il carico di rete
+app.use(compression());
+
+// Serve frontend statico con Cache HTTP (1 anno per i file immutabili di Next.js)
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1y',
+  immutable: true,
+  setHeaders: (res, path) => {
+    // I file HTML non devono essere memorizzati nella cache per permettere aggiornamenti rapidi
+    if (path.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 
 // Stato del gioco
 let gameState = {
